@@ -73,18 +73,16 @@ export const getUEById = async (Id: string) => {
 
 
 
-export async function GuardarEdificio(id: string, posX: number, posY: number, edificioNivel: number): Promise<void> {
-    //id = '663ac05f044ccf6167cf703d'
+export async function GuardarEdificio(usersId: string,id: string, posX: number, posY: number, edificioNivel: number): Promise<void> {
 
-    console.log("id ", id)
-    console.log(" posx", posX)
-    console.log(posY)
+
+   // modifica la posicion de un edificio
     try {
       // Lógica para guardar/actualizar el edificio en la base de datos
       await prisma.userEdificios.updateMany({
         where: { id },
         data: {
-        userId: '6642cd26b1865f8de5c7b62b',     //id nico
+        userId: usersId,     //id nico
           posicion_x: posX,
           posicion_y: posY,
           nivel : edificioNivel
@@ -96,18 +94,19 @@ export async function GuardarEdificio(id: string, posX: number, posY: number, ed
       console.error("Error saving building:", error);
       throw error;
     }
-    console.log("id ", id)
-    console.log(" posx", posX)
-    console.log(posY)
+ 
 
   }
 
-
-export async function builtEdificio(edificioID: string, edificioX: number,edificioY: number, edificioNivel: number) {
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------moifique para pasar usuario por parametro------------------------------------------------------------------------------
+export async function builtEdificio( usuarioId: string, edificioID: string, edificioX: number,edificioY: number, edificioNivel: number) {
     try {
         // Obtener el ID del usuario
-        const usuarioId = '6642cd26b1865f8de5c7b62b';   //id_nico
-        console.log("usuarioId: ", edificioID)
+       
         // Crear el edificio en la base de datos utilizando Prisma
         const nuevoEdificio = await prisma.userEdificios.create({
             data: {
@@ -129,14 +128,21 @@ export async function builtEdificio(edificioID: string, edificioX: number,edific
 }
 
 
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------------------------------------------------------------------------------------
+///------------------------------------------moifique para pasar usuario por parametro--------------------------------------------------
 
-
-export async function getBuildingsByUserId(userId: string): Promise<any[]> {
+export async function getBuildingsByUserId(usuarioId: string): Promise<any[]> {
+    console.log("usuarioId",usuarioId)
+     let user = usuarioId
     try {
+
         // Buscar todos los edificios creados por el usuario con el ID proporcionado
         const buildings = await prisma.userEdificios.findMany({
             where: {
-                userId: '6642cd26b1865f8de5c7b62b', // Utilizar el `userId` proporcionado en la llamada
+                userId: user, // Utilizar el `userId` proporcionado en la llamada
             },
             include: {
                 edificio: {
@@ -145,24 +151,39 @@ export async function getBuildingsByUserId(userId: string): Promise<any[]> {
                         name: true,
                         ancho: true,
                         largo: true,
-                        costo: true
+                        costo: true,
+                        //---------------------------
+                        // ---------agrege ---------
+                        cantidad: true
+
+
+                        //---------------------------
                     }
                 }
             }
         });
-
+///------------------------------------------------------------------------------------------------------------------------
+///-----------------------------lo cambile-------------------------------------------------------------------------------------------
+ 
         // Mapeamos los resultados para que tengan el formato deseado
-        return buildings.map(building => ({
-             // Utilizar el id de la relación UserEdificios
-            id: building.id,
-            x: building.posicion_x,
-            y: building.posicion_y,
-            type: building.edificio.name, // Usar el nombre del edificio como tipo
-            costo: building.edificio.costo,
-            ancho: building.edificio.ancho,
-            largo: building.edificio.largo,
-            nivel: building.nivel
+         // Filtramos los resultados que tienen un edificio válido
+         const validBuildings = buildings.filter(building => building.edificio !== null);
 
+         // Mapeamos los resultados para que tengan el formato deseado
+         return validBuildings.map(building => ({
+             // Utilizar el id de la relación UserEdificios
+             id: building.id,
+             x: building.posicion_x,
+             y: building.posicion_y,
+             type: building.edificio.name, // Usar el nombre del edificio como tipo
+             costo: building.edificio.costo,
+             ancho: building.edificio.ancho,
+             largo: building.edificio.largo,
+             nivel: building.nivel,
+             cantidad: building.edificio.cantidad
+             //---------------------------
+                // ---------agrege ---------
+                //cantidad: building.edificio.cantidad
         }));
     } catch (error) {
         console.error("Error fetching buildings by user ID:", error);
@@ -244,3 +265,8 @@ export const updateUEunidades= async (Id: string, unidades: any, panXunidad:any)
     return e
 }
 
+
+
+//------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
+//-----------------seba-- patre mia arriba  solo midifique algunos ------------------------------------------------------------

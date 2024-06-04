@@ -9,7 +9,7 @@ import { redirect } from "next/dist/server/api-utils";
 
 const prisma = new PrismaClient()
 let cantMadera = 500
-let cantPan = 800
+let cantPan = 6000
 let cantPiedra= 600
 let unidadesDeTrabajo = 100
 
@@ -53,7 +53,26 @@ export async function createUser(user: { email: string, password: string, userna
     madera: cantMadera,
     nivel:1, 
     salt,
-    unidadesDeTrabajo: unidadesDeTrabajo
+    unidadesDeTrabajo: unidadesDeTrabajo,
+    // otros campos que necesites---------------------------
+    //---------------------------------------------
+    //------------------------------
+    canon : 0,
+    muro : 0,
+    bosque : 0,
+    herreria : 0,
+    cantera : 0,
+    maderera :0,
+    panaderia : 0,
+    ayuntamiento : 0,
+
+    //---------------------------------------------
+
+
+
+
+
+
 }
 
   await prisma.users.create({ data: userWithHash });
@@ -129,6 +148,8 @@ export const getUserById= async (Id:string) => {
   return users
   /* else return false   */
 }
+
+
 export async function getUser(Id: string) {
   const u = await prisma.users.findUnique({
     where: {
@@ -161,4 +182,161 @@ export async function getUserByCooki() {
   const user = getUserByHash(hash)
   return user
 }
+
+
+//---------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------
+//----------------------------------------------------SEBA-----------------------------------------------------
+
+// GUARDA EL EDIFICIO EN LA BASE DE DATOS CUANDO SE MUEVE
+export async function GuardarEdificio(id: string, posX: number, posY: number, edificioNivel: number): Promise<void> {
+  try {
+    // Lógica para guardar/actualizar el edificio en la base de datos
+    await prisma.userEdificios.updateMany({
+      where: { id },
+      data: {
+      
+        posicion_x: posX,
+        posicion_y: posY,
+        nivel : edificioNivel
+       
+      },
+     
+    });
+  } catch (error) {
+    console.error("Error saving building:", error);
+    throw error;
+  }
+  console.log("id ", id)
+  console.log(" posx", posX)
+  console.log(posY)
+
+}
+
+// metodo para construir un edificio
+export async function builtEdificio(usuarioId: string,edificioID: string, edificioX: number,edificioY: number, edificioNivel: number) {
+  try {
+      // Obtener el ID del usuario
+      //const usuarioId = '6645239328fab0b97120439e';
+     
+      // Crear el edificio en la base de datos utilizando Prisma
+      const nuevoEdificio = await prisma.userEdificios.create({
+          data: {
+              edificioId: edificioID, // Asegúrate de que este es un string válido
+              posicion_x: edificioX,
+              posicion_y: edificioY,
+              userId: usuarioId,
+              ultimaInteraccion: new Date(),
+              nivel: edificioNivel // Establecer un valor por defecto para 'nivel'
+              
+          }
+      });
+
+      // Devolver el ID del usuario y el edificio creado
+      return { usuarioId: usuarioId, edificio: nuevoEdificio };
+  } catch (error) {
+      console.error("Error al guardar el edificio en la base de datos:", error);
+      throw error; // Relanzar el error para que sea manejado por el código que llama a esta función
+  }
+}
+
+// metodo para obtener los edificios de un usuario
+export async function getBuildingsByUserId(idUser: string): Promise<any[]> {
+  try {
+      
+      
+      // Buscar todos los edificios creados por el usuario con el ID proporcionado
+      const buildings = await prisma.userEdificios.findMany({
+          where: {
+              userId:idUser, // Utilizar el `userId` proporcionado en la llamada
+          },
+          include: {
+              edificio: {
+                  select: {
+                      name: true,
+                      ancho: true,
+                      largo: true,
+                      costo: true,
+                      cantidad: true
+                  }
+              }
+          }
+      });
+      
+      console.log("buildings: ", buildings);
+
+      // Filtramos los resultados que tienen un edificio válido
+      const validBuildings = buildings.filter(building => building.edificio !== null);
+
+      // Mapeamos los resultados para que tengan el formato deseado
+      return validBuildings.map(building => ({
+          // Utilizar el id de la relación UserEdificios
+          id: building.id,
+          x: building.posicion_x,
+          y: building.posicion_y,
+          type: building.edificio.name, // Usar el nombre del edificio como tipo
+          costo: building.edificio.costo,
+          ancho: building.edificio.ancho,
+          largo: building.edificio.largo,
+          nivel: building.nivel,
+          cantidad: building.edificio.cantidad
+      }));
+  } catch (error) {
+      console.error("Error fetching buildings by user ID:", error);
+      throw error;
+  }
+}
+
+export async function updateUserBuildings(
+  userId: string,
+  canonn: number,
+  muro: number,
+  bosque: number,
+  herreria: number,
+  cantera: number,
+  maderera: number,
+  panaderia: number,
+  ayuntamientos: number,
+  pans : number,
+  maderas : number,
+  piedras : number
+) {
+  try {
+    // Buscar al usuario
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (user) {
+      // Actualizar los campos de edificios con las cantidades proporcionadas
+      await prisma.users.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          canon: canonn,
+          muros: muro,
+          bosque: bosque,
+          herreria: herreria,
+          cantera: cantera,
+          maderera: maderera,
+          panaderia: panaderia,
+          ayuntamiento: ayuntamientos,
+          pan: pans,
+          madera: maderas,
+          piedra: piedras,
+        },
+      });
+      console.log('User buildings updated successfully.');
+    } else {
+      console.log(`User with ID ${userId} not found.`);
+    }
+  } catch (error) {
+    console.error('Error updating user buildings:', error);
+    throw error;
+  }
+};
+
 

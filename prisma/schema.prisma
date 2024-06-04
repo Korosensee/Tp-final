@@ -25,6 +25,17 @@ model Edificios {
   recursoPorMinuto Int?
   tipoRecurso String?
   ultimaInteraccion DateTime?
+//----------------------------------------------------------------------------------
+//---------------------------------------------------------------------------- SEBA ----------------
+
+ cantidad  Int?// canatidad de capacidad de contruccion de unidades de este tipo de edificio        |
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//-------------SOLO ESO  EN EDIFICIO----------------------
+
+
+
+
   userEdificios UserEdificios[]
  
 }
@@ -41,6 +52,30 @@ model Users{
   piedra Int
   pan Int
   unidadesDeTrabajo Int?
+  ///------------------------------------------------------------------------------------------------
+  ///------------------------------------SEBA-------------------------------------------------------
+  canon Int?
+  maderera Int?
+  panaderia Int?
+  ayuntamiento Int?
+  cantera Int?
+  muros Int?
+  bosque Int?
+  herreria Int?
+  //------------------------------------------------------------------------------------------------
+  //--------------------------------SOLO ESO----------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
   userEdificios UserEdificios[]
 }
 model UserEdificios{

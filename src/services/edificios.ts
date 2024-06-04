@@ -3,18 +3,49 @@ import { PrismaClient } from "@prisma/client"
 /* import { NextResponse } from "next/server" */
 
 const prisma = new PrismaClient()
-
-  export const addEdificio = async (edificio:any) => {
+//--------------------------------------------------
+//////////////-----------------
+// -----------------modifique esto ---------------
+export const addEdificio = async (edificio: any, ancho: number, largo: number) => {
     const ed = await prisma.edificios.create({
-        data: edificio
-    })  
-    return ed
+        data: {
+            ...edificio,
+            ancho: ancho,
+            largo: largo
+        }
+    });  
+    return ed;
 }
-export const getEdificios = async () => {
-    const muchos = await prisma.edificios.findMany()  
-    console.log(muchos)        
-    return muchos
+///--------------------------------------------
+//------------------------------ esto modifique completo
+//----------------------------------------------
+
+export async function getEdificios(): Promise<any[]> {
+    try {
+        const edificios = await prisma.edificios.findMany({
+            select: {
+                id: true,
+                name: true,
+                ancho: true,
+                largo: true,
+                costo: true,
+                cantidad: true,
+                descripcion: true,
+                // otros campos que necesites
+            },
+        });
+        return edificios;
+    } catch (error) {
+        console.error("Error fetching edificios:", error);
+        throw error;
+    }
 }
+
+
+
+
+
+
 export const getEdificioById = async (Id: string) => {
     const edif = await prisma.edificios.findFirst({
         where:{
@@ -31,6 +62,8 @@ export const getEdificioByName = async (Name: string) => {
     })
     return edif
 }
+
+// parece que no lo uso --seba
 export const updateEdificioUltimaInteraccion = async (Id:any, UltimaInteraccion: any) => {
 await prisma.edificios.update({
     where:{
@@ -58,6 +91,8 @@ export const getOneEdificio = async (Id:string) => {
     })  
     return e
 }
+
+
 /* export const getRecursos = async () => {
     const muchos = await prisma.recursos.findMany()  
     console.log(muchos)        

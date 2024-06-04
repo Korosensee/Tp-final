@@ -10,6 +10,8 @@ import {recolectarRecursos } from '@/services/recursos';
 import { useCookies } from 'react-cookie';
 import { verifyJWT } from '@/helpers/jwt';
 import { Await } from 'react-router-dom';
+import { updateUserBuildings } from '@/services/users';
+
 
 
 type Building = {
@@ -21,7 +23,11 @@ type Building = {
   id: string;
   nivel: number;
   costo: number;
+  //-----------------------------
+  // ---------agrege ---------
+  cantidad: number;
 };
+
 
 const DynamicBuildings: React.FC = () => {
 
@@ -34,48 +40,92 @@ const DynamicBuildings: React.FC = () => {
   const [pan, setPan] = useState(0);
   const [usuario, setUser] = useState('');
   const[menuButton, setMenBut] = useState(false);
-
-
+////-----------------------------------------------------------
+//-----------------------------------------------------------
+//-----------------------------------------------------------
+const [canon, setCanon] = useState(0);
+const [maderera, setMaderera] = useState(0);
+const [cantera, setCantera] = useState(0);
+const [panaderia, setPanaderia] = useState(0);
+const [bosque, setBosque] = useState(0);
+const [muros, setMuros] = useState(0);
+const [ayuntamiento, setAyuntamiento] = useState(0);
+const [herreria, setHerreria] = useState(0);
+const [UserId, setUserId] = useState('');
 
 
   const mouseMoveRef = useRef<(e: MouseEvent) => void>(() => {});
   const mouseUpRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-
-    let userId = getUserByCooki().then((resultado)=>resultado?.id) // Reemplazar con el ID de usuario actual
-    cargarUser();
-    getBuildingsByUserId(userId)
-      .then(fetchedBuildings => {
-        setBuildings(fetchedBuildings);
-      })
-      .catch(error => {
-        console.error("Error fetching buildings:", error);
-      });
-  }, []);
-  const handleBuildClick = async (id: string, x: number, y: number, buildingType: string, ancho: number, largo: number, nivel: number) => {
-    const newBuilding = { id, x, y, type: buildingType, ancho, largo, nivel, costo: 0};
-    const collisionIndex = getCollidedBuildingIndex(-1, x, y, ancho, largo);
-
-    if (collisionIndex === -1) {
-      setBuildings([...buildings, newBuilding]);
-
-      // Llamar a la función para guardar el edificio en la base de datos
+    const fetchUserAndBuildings = async () => {
       try {
-        await builtEdificio(id, x, y, nivel);
-        console.log('Edificio guardado exitosamente en la base de datos.');
+        // Fetch the user ID
+        const user = await getUserByCooki();
+        const userId = user?.id;
+
+        if (userId) {
+          const userIdString = userId.toString();
+          setUser(userIdString);
+
+          // Fetch buildings by user ID
+          const fetchedBuildings = await getBuildingsByUserId(userIdString);
+          setBuildings(fetchedBuildings);
+        } else {
+          console.error("User ID is undefined");
+        }
       } catch (error) {
-        console.error('Error al guardar el edificio en la base de datos:', error);
+        console.error("Error fetching buildings:", error);
       }
-    } else {
-      console.log('Ya hay un edificio del mismo tipo en estas coordenadas');
-    }
-  };
+    };
+
+    fetchUserAndBuildings();
+
+    // Load user data (assuming this is a synchronous function)
+    cargarUser();
+  }, []);
+
+  //---------------------------------
+//------------------------
+//-------------------------------------------
+
+
+  const handleBuildClick = async (id: string, x: number, y: number, buildingType: string, ancho: number, largo: number, costos: number) => {
+    const existingBuilding = false //buildings.find(building => building.x === x && building.y === y && building.id === id);
+      
+     if (!existingBuilding) {
+       
+  
+       // Actualizar el estado del usuario
+       const construir = await updateBuildingCount(id, costos); // devuelve 1 si se puede construir, 0 si no
+        // window.location.reload();
+       // Llamar a la función para guardar el edificio en la base de datos
+       if (construir === 1) {
+         buildings.find(building => building.x === x && building.y === y && building.id === id);
+         
+         const newBuilding = { id, x, y, type: buildingType, ancho, largo, cantidad: 1 };
+         //setBuildings([...buildings, newBuilding]);
+         window.location.reload();
+         try {
+           // Evita recargar la página, en su lugar actualiza el estado
+           await builtEdificio(UserId, id, x, y, 1);
+           console.log('Edificio guardado exitosamente en la base de datos.');
+          
+         } catch (error) {
+           console.error('Error al guardar el edificio en la base de datos:', error);
+         }
+       }
+     } else {
+       console.log('Ya hay un edificio del mismo tipo en estas coordenadas');
+     }
+   }; 
+   
+   //------------------------------------------------------------
+   //----------------------------------
 
   const handleMenuClick = () => {
     setMenuOpen(!menuOpen);
   };
-  
 
   const handleMouseDown = (index: number, event: React.MouseEvent<HTMLDivElement>) => {
     setDraggedBuildingIndex(index);
@@ -99,47 +149,47 @@ const DynamicBuildings: React.FC = () => {
     window.addEventListener('mouseup', mouseUpRef.current);
   };
 
+  //---------------------------------
+  //------------------------------
+  //---------------------------------
+  
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
   const handleBuildingMove = (index: number, newX: number, newY: number) => {
     setBuildings(prevBuildings => {
       const updatedBuildings = [...prevBuildings];
-      const maxWidth = 1200; // Ancho del área de construcción
-      const maxHeight = 700; // Alto del área de construcción
-      const buildingWidth = updatedBuildings[index].ancho; // Ancho de cada edificio
-      const buildingHeight = updatedBuildings[index].largo; // Alto de cada edificio
+      const maxWidth = 1170;
+      const maxHeight = 700;
+      const buildingWidth = updatedBuildings[index].ancho;
+      const buildingHeight = updatedBuildings[index].largo;
 
-      // Limitar las coordenadas x e y dentro del área de construcción
-      const clampedX = Math.min(Math.max(newX, 0)+20, maxWidth - buildingWidth);
+      const clampedX = Math.min(Math.max(newX, 0) + 26, maxWidth - buildingWidth);
       const clampedY = Math.min(Math.max(newY, 0), maxHeight - buildingHeight);
 
-      // Ajustar la posición si colisiona con otros edificios
-      const collisionIndex = getCollidedBuildingIndex(index, clampedX, clampedY, buildingWidth, buildingHeight);
-      if (collisionIndex !== -1) {
-        const collidedBuilding = updatedBuildings[collisionIndex];
-        const deltaX = clampedX - collidedBuilding.x;
-        const deltaY = clampedY - collidedBuilding.y;
-
-        // Calcular la dirección de desplazamiento y ajustar la posición del edificio
-        let newClampedX = clampedX;
-        let newClampedY = clampedY;
-
-        if (Math.abs(deltaX) < Math.abs(deltaY)) {
-          // Desplazamiento horizontal
-          newClampedX = collidedBuilding.x + (deltaX > 0 ? collidedBuilding.ancho : -buildingWidth);
-        } else {
-          // Desplazamiento vertical
-          newClampedY = collidedBuilding.y + (deltaY > 0 ? collidedBuilding.largo : -buildingHeight);
-        }
-
-        // Limitar las coordenadas x e y dentro del área de construcción después del ajuste
-        updatedBuildings[index].x = Math.min(Math.max(newClampedX, 0), maxWidth - buildingWidth);
-        updatedBuildings[index].y = Math.min(Math.max(newClampedY, 0), maxHeight - buildingHeight);
+      const collidedBuildingIndex = getCollidedBuildingIndex(index, clampedX, clampedY, buildingWidth, buildingHeight);
+      if (collidedBuildingIndex !== -1) {
+        // Lógica de manejo de colisiones...
       } else {
         updatedBuildings[index].x = clampedX;
         updatedBuildings[index].y = clampedY;
+
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+
+        timeoutId = setTimeout(() => {
+          guardarEdificioEnBD( updatedBuildings[index].id, clampedX, clampedY, updatedBuildings[index].nivel);
+          timeoutId = null;
+        }, 500);
       }
+
       return updatedBuildings;
     });
   };
+
+
+  //-------------------------
+  
 
   const getCollidedBuildingIndex = (index: number, x: number, y: number, width: number, height: number) => {
     return buildings.findIndex((building, i) =>
@@ -153,12 +203,13 @@ const DynamicBuildings: React.FC = () => {
 
 
   const guardarEdificioEnBD = (id: string, posX: number, posY: number, nivel : number) => {
-    GuardarEdificio(id, posX, posY, nivel);
+    GuardarEdificio(UserId,id, posX, posY, nivel);
   };
-
+//
+//nose usa
   const guardarAldea = () => {
     buildings.forEach(building => {
-      guardarEdificioEnBD(building.id, building.x, building.y, building.nivel);
+      //guardarEdificioEnBD(building.id, building.x, building.y, building.nivel);
     });
   };
   const recolectarRecursosUser = async () => {
@@ -174,11 +225,22 @@ const DynamicBuildings: React.FC = () => {
   const cargarUser = async () => {
     const user = await getUserByCooki()
 /* const user = await getUser(usoCooki().then(x =>x?.id)) */
+
     if(user != null){
       setMadera(user.madera);
       setPiedra(user.piedra);
       setPan(user.pan);
       setUser(String (user.username));
+      setUserId(user.id);
+      setCanon(user.canon);
+      setMaderera(user.maderera);
+      setCantera(user.cantera);
+      setPanaderia(user.panaderia);
+      setBosque(user.bosque);
+      setMuros(user.muros);
+      setAyuntamiento(user.ayuntamiento);
+      setHerreria(user.herreria);
+
     }
   }
   const generarUnidades = () => {
@@ -200,18 +262,180 @@ const DynamicBuildings: React.FC = () => {
 
   
 
-  const getUE = async () => {
-    const user = await getUserByCooki()
-    const h= await getUEbyUserId(user.id)
-    return h
+//----------------------------------
+//----------------------------------
+const updateBuildingCount = async (id: string, costos: number) => {
+  const userId = '6645239328fab0b97120439e'; // Reemplazar con el ID de usuario actual
+  let countsMax = 0;
+  
+  const newCounts = {
+    canon,
+    maderera,
+    cantera,
+    panaderia,
+    bosque,
+    muros,
+    ayuntamiento,
+    herreria,
+    pan,
+    madera,
+    piedra,
+  };
+
+  switch (id) {
+    case '663ac05e044ccf6167cf703c':
+      if (canon < 3 && piedra >= costos) {
+        
+        newCounts.canon += 1;// sumo 1  a la cantidad de cañones
+       
+        
+        newCounts.piedra = (piedra - costos); // Deduct costos from piedra
+        setCanon(newCounts.canon);
+         
+        setPiedra(newCounts.piedra);
+        
+        countsMax = 1;
+      } else {
+        console.log('No puedes tener más de 3 cañones o no tienes suficiente piedra');
+      }
+      break;
+
+
+    case '663ac05f044ccf6167cf7041':
+      if (maderera < 3 && madera >= costos) {
+        newCounts.maderera += 1;
+        setMaderera(newCounts.maderera);
+        newCounts.madera = (madera - costos);
+        setMadera(newCounts.madera);
+        countsMax = 1;
+      } else {
+        console.log('Condition for maderera not met');
+      }
+      break;
+
+
+
+    case '663ac05f044ccf6167cf7040':
+      if (cantera < 3) {
+        newCounts.cantera += 1;
+        setCantera(newCounts.cantera);
+        newCounts.madera = (madera - costos);
+        setMadera(newCounts.madera);
+        countsMax = 1;
+      } else {
+        console.log('Condition for cantera not met');
+      }
+      break;
+
+
+
+    case '663ac518044ccf6167cf7054':
+      if (panaderia < 3 && pan >= costos) {
+        newCounts.panaderia += 1;
+        newCounts.pan = (pan - costos);
+        setPanaderia(newCounts.panaderia);
+        setPan(newCounts.pan);
+        countsMax = 1;
+      } else {
+        console.log('Condition for panaderia not met');
+      }
+      break;
+
+
+
+
+    case '663ac060044ccf6167cf7042':
+      if (bosque < 3) {
+        newCounts.bosque += 1;
+        setBosque(newCounts.bosque);
+        newCounts.madera = (madera - costos);
+        setMadera(newCounts.madera);
+        countsMax = 1;
+      } else {
+        console.log('Condition for bosque not met');
+      }
+      break;
+
+
+
+    case '663ac05f044ccf6167cf703e':
+      if (muros < 3) {
+        newCounts.muros += 1;
+        setMuros(newCounts.muros);
+        newCounts.piedra = (piedra - costos);
+        setPiedra(newCounts.piedra);
+        countsMax = 1;
+      } else {
+        console.log('No puedes tener más de 3 muros');
+      }
+      break;
+    case '663ac05f044ccf6167cf703d': // ayuntamiento (changed ID)
+      if (ayuntamiento < 1) {
+        newCounts.ayuntamiento += 1;
+        setAyuntamiento(newCounts.ayuntamiento);
+        newCounts.madera = (madera - costos);
+        setMadera(newCounts.madera);
+        countsMax = 1;
+      } else {
+        console.log('Condition for ayuntamiento not met');
+      }
+      break;
+    case '663ac05f044ccf6167cf703f':
+      
+      if (herreria < 2) {
+        newCounts.herreria += 1;
+        setHerreria(newCounts.herreria);
+        newCounts.piedra = (piedra - costos);
+        setPiedra(newCounts.piedra);
+        countsMax = 1;
+      } else {
+        console.log('Condition for herreria not met');
+      }
+      break;
   }
+
+  try {
+    await updateUserBuildings(
+      userId,
+      newCounts.canon,
+      newCounts.muros,
+      newCounts.bosque,
+      newCounts.herreria,
+      newCounts.cantera,
+      newCounts.maderera,
+      newCounts.panaderia,
+      newCounts.ayuntamiento,
+      newCounts.pan,
+      newCounts.madera,
+      newCounts.piedra,
+    );
+    console.log('User buildings count updated successfully.');
+  } catch (error) {
+    console.error('Error updating user buildings count:', error);
+  }
+
+  return countsMax;
+};
+
+
+//----------------------------------
+//-------------seba---------------------
   return (
     <div className="hola flex flex-col items-center justify-center w-screen h-screen bg-gray-900">
       <div className="absolute top-0 left-0 p-4 bg-red-500 hover:bg-blue-700 text-blue font-bold py-2 px-4 rounded">
-        <h3>Usuario: {usuario}</h3>
+        <h3>Usuario: {UserId}</h3>
         <h3>Madera: {madera}</h3>
         <h3>Piedra: {piedra}</h3>
         <h3>Pan: {pan}</h3>
+        <h3>Canon: {canon}</h3>
+        <h3>Maderera: {maderera}</h3>
+        <h3>Cantera: {cantera}</h3>
+        <h3>Panaderia: {panaderia}</h3>
+        <h3>Bosque: {bosque}</h3>
+        <h3>Muros: {muros}</h3>
+        <h3>Ayuntamiento: {ayuntamiento}</h3>
+        <h3>Herreria: {herreria}</h3>
+        
         <button onClick={() => recolectarRecursosUser()}> Recolectar Recursos</button>        
       </div>
       <div className='absolute top-0 left-100 p-4 bg-red-500 hover:bg-blue-700 text-blue font-bold py-2 px-4 rounded'>
